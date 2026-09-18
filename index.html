@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Калькулятор модульных зданий</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #dc2626;
+            --success: #16a34a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 70px; }
+        header { background: #1e293b; color: white; padding: 15px; position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 1.1rem; font-weight: 600; }
+        
+        .container { padding: 12px; max-width: 600px; margin: 0 auto; }
+        .card { background: var(--card-bg); border-radius: 10px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card h2 { font-size: 0.95rem; margin-bottom: 10px; color: #334155; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        
+        label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 3px; }
+        input[type="number"], input[type="text"], select { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        
+        .row-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 0.85rem; }
+        .row-item:last-child { border-bottom: none; }
+        .row-item label { margin: 0; flex: 1; color: var(--text); }
+        .row-item input[type="checkbox"] { width: 18px; height: 18px; margin-right: 10px; }
+        .row-item input[type="number"] { width: 75px; text-align: right; }
+
+        .summary-block { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; margin-top: 10px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; }
+        .summary-row.total { font-weight: bold; font-size: 1.1rem; color: var(--primary); border-top: 1px solid #bfdbfe; padding-top: 6px; margin-top: 6px; }
+
+        .nav-tabs { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 8px 0; z-index: 100; }
+        .nav-tab { background: none; border: none; font-size: 0.75rem; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+        .nav-tab.active { color: var(--primary); font-weight: 600; }
+        .nav-tab span.icon { font-size: 1.3rem; margin-bottom: 2px; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 6px; font-size: 0.9rem; font-weight: 500; width: 100%; cursor: pointer; text-align: center; }
+        .btn:active { background: var(--primary-hover); }
+        .badge-red { color: var(--danger); font-size: 0.75rem; font-weight: bold; }
+        
+        @media print {
+            .nav-tabs, header, .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .card { border: none; box-shadow: none; padding: 0; margin-bottom: 15px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="header-title">Калькулятор модулей</h1>
+        <button class="no-print" style="background:none; border:none; color:white; font-size:0.8rem;" onclick="resetData()">Сброс</button>
+    </header>
+
+    <div class="container">
+        
+        <!-- ТАБ 1: КАЛЬКУЛЯТОР -->
+        <div id="tab-calc" class="tab-content active">
+            <div class="card">
+                <h2>Геометрия здания</h2>
+                <div class="grid-3" style="margin-bottom:10px;">
+                    <div><label>Длина (м)</label><input type="number" id="dim-l" value="12" oninput="calcAll()"></div>
+                    <div><label>Ширина (м)</label><input type="number" id="dim-w" value="12" oninput="calcAll()"></div>
+                    <div><label>Этажность</label><input type="number" id="dim-h" value="1" min="1" max="3" oninput="calcAll()"></div>
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted);">
+                    Общая площадь: <strong id="res-area">144.00</strong> м² | Периметр стен: <strong id="res-perim">48.00</strong> м
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Конструкции и утепление</h2>
+                <div class="row-item">
+                    <label>Каркас / тип</label>
+                    <select id="sel-frame" onchange="calcAll()">
+                        <option value="235000">6000*2440*150 (235 000р)</option>
+                        <option value="255000" selected>6000*2440*200 (255 000р)</option>
+                        <option value="260000">6000*2440*250 (260 000р)</option>
+                    </select>
+                </div>
+                <div class="row-item"><label>Кол-во каркасов/модулей</label><input type="number" id="cnt-modules" value="12" oninput="calcAll()"></div>
+                <div class="row-item"><label>Панели контур (м²)</label><input type="number" id="cnt-pan-kontur" value="132" oninput="calcAll()"></div>
+                <div class="row-item"><label>Фермы/прогоны/связи (м² обл.)</label><input type="number" id="cnt-fermy" value="144" oninput="calcAll()"></div>
+                <div class="row-item"><label><span class="badge-red">*</span>Фасонка наружная (м)</label><input type="number" id="cnt-fason-out" value="96" oninput="calcAll()"></div>
+            </div>
+
+            <div class="card">
+                <h2>Финишная отделка и инженерия</h2>
+                <div id="dynamic-finishes"></div>
+            </div>
+
+            <div class="card">
+                <h2>Монтаж и доставка</h2>
+                <div class="row-item"><label>Монтаж</label><input type="number" id="montage-sum" value="2880000" oninput="calcAll()"></div>
+                <div class="row-item"><label>Доставка</label><input type="number" id="delivery-sum" value="50000" oninput="calcAll()"></div>
+                <div class="row-item"><label>Накладные расходы СМР</label><input type="number" id="overhead-sum" value="1425000" oninput="calcAll()"></div>
+            </div>
+
+            <div class="summary-block">
+                <div class="summary-row"><span>Себестоимость итого:</span> <strong id="res-cost">0 ₽</strong></div>
+                <div class="summary-row"><span>НДС (22%):</span> <strong id="res-vat">0 ₽</strong></div>
+                <div class="summary-row"><span>Сумма без НДС:</span> <strong id="res-ex-vat">0 ₽</strong></div>
+                <div class="summary-row total"><span>ПРОДАЖА С НДС:</span> <strong id="res-sale">0 ₽</strong></div>
+                <div class="summary-row" style="font-size:0.8rem; color:var(--text-muted);"><span>Цена за м²:</span> <span id="res-per-m2">0 ₽/м²</span></div>
+            </div>
+        </div>
+
+        <!-- ТАБ 2: СПРАВОЧНИК / РЕДАКТИРОВАНИЕ ЦЕН -->
+        <div id="tab-prices" class="tab-content">
+            <div class="card">
+                <h2>Справочник базовых цен</h2>
+                <div id="price-editor-list"></div>
+                <br>
+                <button class="btn" onclick="savePrices()">Сохранить цены</button>
+            </div>
+        </div>
+
+        <!-- ТАБ 3: КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ -->
+        <div id="tab-kp" class="tab-content">
+            <div class="card">
+                <div class="no-print" style="margin-bottom:12px;">
+                    <button class="btn" onclick="window.print()">Печать / Сохранить PDF</button>
+                </div>
+                <div id="kp-container" style="line-height: 1.5; font-size: 0.9rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav-tabs no-print">
+        <button class="nav-tab active" onclick="switchTab('calc', this)"><span class="icon">🧮</span>Расчет</button>
+        <button class="nav-tab" onclick="switchTab('prices', this)"><span class="icon">⚙️</span>Прайс</button>
+        <button class="nav-tab" onclick="switchTab('kp', this)"><span class="icon">📄</span>КП</button>
+    </nav>
+
+    <script>
+        const defaultPrices = {
+            frame_150: 235000, frame_200: 255000, frame_250: 260000,
+            panel_contour: 3060, panel_partition: 2100,
+            linoleum: 1650, keramogranit: 2500, armstrong: 1200, grilyato: 1200,
+            project: 2500, el: 3800, aps: 2800, vent: 1500, heating: 2500,
+            sks: 800, skud: 800, sot: 1200, ops: 1500, stol_peregovorov: 600000
+        };
+
+        let prices = {...defaultPrices};
+        try {
+            const saved = localStorage.getItem('mod_prices_v2');
+            if (saved) prices = {...defaultPrices, ...JSON.parse(saved)};
+        } catch(e) { console.warn('Storage read err', e); }
+
+        const finishingItems = [
+            { id: 'linoleum', name: 'Линолеум полукомм. с плинтусом', type: 'area', priceKey: 'linoleum' },
+            { id: 'keramogranit', name: 'Керамогранит', type: 'area', priceKey: 'keramogranit' },
+            { id: 'armstrong', name: 'Потолок Армстронг', type: 'area', priceKey: 'armstrong' },
+            { id: 'project', name: 'Проект (кроме вентиляции)', type: 'area', priceKey: 'project' },
+            { id: 'el', name: 'Электрика внутренняя', type: 'area', priceKey: 'el' },
+            { id: 'aps', name: 'АПС и СОУЭ', type: 'area', priceKey: 'aps' },
+            { id: 'vent', name: 'Вентиляция приточно/вытяжная', type: 'area', priceKey: 'vent' },
+            { id: 'heating', name: 'Разводка отопления', type: 'area', priceKey: 'heating' },
+            { id: 'sks', name: 'СКС', type: 'area', priceKey: 'sks' },
+            { id: 'skud', name: 'СКУД', type: 'area', priceKey: 'skud' },
+            { id: 'sot', name: 'СОТ', type: 'area', priceKey: 'sot' },
+            { id: 'ops', name: 'ОПС', type: 'area', priceKey: 'ops' },
+            { id: 'stol_peregovorov', name: 'Стол переговоров (мебель)', type: 'fixed', priceKey: 'stol_peregovorov' }
+        ];
+
+        function initUI() {
+            try {
+                const container = document.getElementById('dynamic-finishes');
+                if (container) {
+                    container.innerHTML = finishingItems.map(item => `
+                        <div class="row-item">
+                            <label>${item.name}</label>
+                            <input type="checkbox" id="chk-${item.id}" ${['el','heating','armstrong','linoleum','project'].includes(item.id) ? 'checked' : ''} onchange="calcAll()">
+                            <input type="number" id="vol-${item.id}" value="${item.type === 'area' ? 144 : 1}" ${item.type === 'area' ? 'readonly style="background:#f1f5f9; color:#64748b;"' : ''} oninput="calcAll()">
+                        </div>
+                    `).join('');
+                }
+
+                const priceEditor = document.getElementById('price-editor-list');
+                if (priceEditor) {
+                    priceEditor.innerHTML = Object.keys(prices).map(k => `
+                        <div class="row-item">
+                            <label>${k}</label>
+                            <input type="number" id="price-edit-${k}" value="${prices[k]}">
+                        </div>
+                    `).join('');
+                }
+                calcAll();
+            } catch(err) {
+                console.error('initUI error:', err);
+            }
+        }
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById('tab-' + tabId);
+            if (target) target.classList.add('active');
+            if (btn) btn.classList.add('active');
+            if (tabId === 'kp') renderKP();
+        }
+
+        function calcAll() {
+            try {
+                const L = parseFloat(document.getElementById('dim-l')?.value) || 0;
+                const W = parseFloat(document.getElementById('dim-w')?.value) || 0;
+                const H = parseFloat(document.getElementById('dim-h')?.value) || 1;
+                
+                const area = L * W;
+                const perim = (L + W) * 2 * H;
+
+                const resArea = document.getElementById('res-area');
+                if (resArea) resArea.innerText = area.toFixed(2);
+                const resPerim = document.getElementById('res-perim');
+                if (resPerim) resPerim.innerText = perim.toFixed(2);
+
+                finishingItems.forEach(item => {
+                    if (item.type === 'area') {
+                        const volInput = document.getElementById('vol-' + item.id);
+                        if (volInput) volInput.value = area;
+                    }
+                });
+
+                const fasonOutEl = document.getElementById('cnt-fason-out');
+                if (fasonOutEl) fasonOutEl.value = perim.toFixed(1);
+
+                const frameCostVal = parseFloat(document.getElementById('sel-frame')?.value) || 0;
+                const cntModules = parseFloat(document.getElementById('cnt-modules')?.value) || 0;
+                const structuresCost = frameCostVal * (cntModules > 0 ? 1 : 0) + 403920 + 864000 + 72000 + 72000 + 83520 + 56160;
+
+                let finishingCost = 0;
+                finishingItems.forEach(item => {
+                    const chk = document.getElementById('chk-' + item.id);
+                    const vol = parseFloat(document.getElementById('vol-' + item.id)?.value || 0);
+                    if (chk && chk.checked) {
+                        finishingCost += vol * (prices[item.priceKey] || 0);
+                    }
+                });
+
+                const montage = parseFloat(document.getElementById('montage-sum')?.value) || 0;
+                const delivery = parseFloat(document.getElementById('delivery-sum')?.value) || 0;
+                const overhead = parseFloat(document.getElementById('overhead-sum')?.value) || 0;
+
+                const totalCost = structuresCost + finishingCost + montage + delivery + overhead;
+                const salePrice = totalCost * 1.284;
+                const vatRate = 0.22;
+                const sumExVat = salePrice / (1 + vatRate);
+                const vatSum = salePrice - sumExVat;
+
+                const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+                setTxt('res-cost', Math.round(totalCost).toLocaleString('ru-RU') + ' ₽');
+                setTxt('res-vat', Math.round(vatSum).toLocaleString('ru-RU') + ' ₽');
+                setTxt('res-ex-vat', Math.round(sumExVat).toLocaleString('ru-RU') + ' ₽');
+                setTxt('res-sale', Math.round(salePrice).toLocaleString('ru-RU') + ' ₽');
+                
+                const perM2 = area > 0 ? salePrice / area : 0;
+                setTxt('res-per-m2', Math.round(perM2).toLocaleString('ru-RU') + ' ₽/м²');
+            } catch(e) {
+                console.error('calcAll error:', e);
+            }
+        }
+
+        function savePrices() {
+            Object.keys(prices).forEach(k => {
+                const el = document.getElementById('price-edit-' + k);
+                if (el) prices[k] = parseFloat(el.value) || 0;
+            });
+            localStorage.setItem('mod_prices_v2', JSON.stringify(prices));
+            calcAll();
+            alert('Цены сохранены!');
+        }
+
+        function resetData() {
+            if (confirm('Сбросить значения?')) {
+                prices = {...defaultPrices};
+                localStorage.removeItem('mod_prices_v2');
+                initUI();
+            }
+        }
+
+        function renderKP() {
+            const area = document.getElementById('res-area')?.innerText || '0';
+            const sale = document.getElementById('res-sale')?.innerText || '0';
+            const perM2 = document.getElementById('res-per-m2')?.innerText || '0';
+            const L = document.getElementById('dim-l')?.value || '12';
+            const W = document.getElementById('dim-w')?.value || '12';
+
+            const container = document.getElementById('kp-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 15px;">
+                        <h3 style="font-size: 1.2rem;">КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ</h3>
+                        <p style="font-size: 0.8rem; color: #64748b;">Модульное здание ${L}х${W} м (Площадь: ${area} м²)</p>
+                    </div>
+                    <p style="margin-bottom: 15px;">Предложение на поставку и монтаж быстровозводимого модульного здания полной заводской готовности.</p>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                        <div style="font-size: 0.85rem; color: #64748b;">Итоговая стоимость с НДС 22%:</div>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: #2563eb; margin: 5px 0;">${sale}</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">Удельная стоимость: ${perM2}</div>
+                    </div>
+                `;
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>
